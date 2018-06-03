@@ -1,0 +1,25 @@
+{
+  "name": "link-module-alias",
+  "version": "1.0.0",
+  "description": "Create permanent links for _moduleAliases",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rush/link-module-alias.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rush/link-module-alias/issues"
+  },
+  "homepage": "https://github.com/Rush/link-module-alias#readme",
+  "devDependencies": {
+    "jest": "^22.4.3"
+  }
+}
