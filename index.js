@@ -74,11 +74,12 @@ async function unlinkModule(moduleName) {
   let type;
   if(statKey && statKey.isSymbolicLink()) {
     await unlink(moduleDir);
+    await unlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
     type = 'symlink';
   } else if(statKey) {
-    await unlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
     await unlink(path.join(moduleDir, 'package.json'));
     await rmdir(moduleDir);
+    await unlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
     type = 'proxy';
   } else {
     type = 'none';
