@@ -5,11 +5,24 @@ const fs = require('fs');
 const path = require('path');
 const child_process = require('child_process');
 
-const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+let packageJson;
+try {
+  packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+} catch(err) {
+  console.error('Cannot open package.json:', err);
+  process.exit(1);
+}
 
 const moduleAliases = packageJson._moduleAliases;
+if(!moduleAliases) {
+  console.error(`_moduleAliases in package.json is empty, skipping`);
+  process.exit(0);
+}
+
 const { promisify } = require('util');
+
 const stat = promisify(fs.stat);
+const lstat = promisify(fs.lstat);
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 const execFile = promisify(child_process.execFile);
@@ -17,6 +30,7 @@ const unlink = promisify(fs.unlink);
 const readdir = promisify(fs.readdir);
 const symlink = promisify(fs.symlink);
 const mkdir = promisify(fs.mkdir);
+const rmdir = promisify(fs.rmdir);
 
 const chalk = require('chalk');
 
@@ -31,6 +45,17 @@ function addColor({moduleName, type, target}) {
   return `${moduleName} -> ${chalk.bold(target)}`;
 }
 
+function addColorUnlink({moduleName, type}) {
+  if(type === 'none') {
+    moduleName = chalk.red(moduleName);
+  } else if(type === 'symlink') {
+    moduleName = chalk.cyan(moduleName);
+  } else if(type === 'proxy') {
+    moduleName = chalk.green(moduleName);
+  }
+  return moduleName;
+}
+
 async function exists(filename) {
   try {
     await stat(filename);
@@ -43,16 +68,24 @@ async function exists(filename) {
 async function unlinkModule(moduleName) {
   let statKey;
   try {
-    statKey = await stat(`node_modules/${key}`);
+    statKey = await lstat(`node_modules/${moduleName}`);
   } catch(err) {}
-  
+
+  const moduleDir = path.join('node_modules', moduleName);
+
+  let type;
   if(statKey && statKey.isSymbolicLink()) {
-    await unlink(`node_modules/${key}`);
+    await unlink(moduleDir);
+    type = 'symlink';
+  } else if(statKey) {
+    await unlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
+    await unlink(path.join(moduleDir, 'package.json'));
+    await rmdir(moduleDir);
+    type = 'proxy';
   } else {
-    await execFile('rm', ['-rf', `node_modules/${moduleName}`])
-    await execFile('rm', ['-rf', `node_modules/.link-module-alias-${moduleName}`])
+    type = 'none';
   }
-  return moduleName;
+  return { moduleName, type };
 }
 
 function js(strings, ...interpolatedValues) {
@@ -67,7 +100,7 @@ function js(strings, ...interpolatedValues) {
 
 async function linkModule(moduleName) {
   const moduleExists = await exists(`node_modules/${moduleName}`);
-  const linkExists = await exists(`node_modules/.link-module-alias-${moduleName}`);
+  const linkExists = moduleExists && await exists(`node_modules/.link-module-alias-${moduleName}`);
   const target = moduleAliases[moduleName];
 
   let type;
@@ -75,12 +108,12 @@ async function linkModule(moduleName) {
     console.error(`Module ${moduleName} already exists and wasn't created by us, skipping`);
     type = 'none';
     return { moduleName, type, target };
-  } else {
+  } else if(linkExists) {
     await unlinkModule(moduleName);
   }
 
   if(target.match(/\.js$/)) {
-    console.log(`Target ${target} is a direct link, creating proxy require`);
+    // console.log(`Target ${target} is a direct link, creating proxy require`);
     await mkdir(`node_modules/${moduleName}`);
     await writeFile(`node_modules/${moduleName}/package.json`, js`
       {
@@ -94,9 +127,8 @@ async function linkModule(moduleName) {
     if(!stat.isDirectory) {
       console.log(`Target ${target} is not a directory, skipping ...`);
       type = 'none';
-      return { moduleName, type, type };
+      return { moduleName, type, target };
     }
-    // console.log(`Target ${target} is a directory, creating symlink`);
     await symlink(path.join('../', target), `node_modules/${moduleName}`);
     type = 'symlink';
   }
@@ -108,7 +140,7 @@ async function linkModules() {
   const modules = await Promise.all(Object.keys(moduleAliases).map(async key => {
     return linkModule(key);
   }));
-  console.log('Module aliases:', modules.map(addColor).join(', '));
+  console.log('link-module-alias:', modules.map(addColor).join(', '));
 }
 
 async function unlinkModules() {
@@ -119,14 +151,19 @@ async function unlinkModules() {
     return m && m[1];
   }).filter(v => !!v);
 
-  const unlinkedModules = await Promise.all(modules.map(async mod => {
-    await unlinkModule(mod);
-    return mod;
+  const unlinkedModules = await Promise.all(modules.map(mod => {
+    return unlinkModule(mod);
   }));
-  console.log('Modules unlinked:', unlinkedModules.join(' '));
+  if(unlinkedModules.length) {
+    console.log('link-module-alias: Cleaned ', unlinkedModules.filter(v => {
+      return v !== 'none';
+    }).map(addColorUnlink).join(' '));
+  } else {
+    console.log('link-module-alias: No modules to clean');
+  }
 }
 
-if(process.argv[2] === 'unlink') {
+if(process.argv[2] === 'clean') {
   unlinkModules();
 } else {
   linkModules();
