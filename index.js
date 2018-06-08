@@ -25,7 +25,6 @@ const stat = promisify(fs.stat);
 const lstat = promisify(fs.lstat);
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
-const execFile = promisify(child_process.execFile);
 const unlink = promisify(fs.unlink);
 const readdir = promisify(fs.readdir);
 const symlink = promisify(fs.symlink);
@@ -36,13 +35,13 @@ const chalk = require('chalk');
 
 function addColor({moduleName, type, target}) {
   if(type === 'none') {
-    moduleName = chalk.red(moduleName);
+    return chalk.red(moduleName) + ` -> ${chalk.bold(chalk.red('ALREADY EXISTS'))}`;
   } else if(type === 'symlink') {
-    moduleName = chalk.cyan(moduleName);
+    return chalk.cyan(moduleName) + ` -> ${chalk.bold(target)}`;
   } else if(type === 'proxy') {
-    moduleName = chalk.green(moduleName);
+    return chalk.green(moduleName) + ` -> ${chalk.bold(target)}`;
   }
-  return `${moduleName} -> ${chalk.bold(target)}`;
+  return `${moduleName} `;
 }
 
 function addColorUnlink({moduleName, type}) {
@@ -66,12 +65,11 @@ async function exists(filename) {
 }
 
 async function unlinkModule(moduleName) {
+  const moduleDir = path.join('node_modules', moduleName);
   let statKey;
   try {
-    statKey = await lstat(`node_modules/${moduleName}`);
+    statKey = await lstat(moduleDir);
   } catch(err) {}
-
-  const moduleDir = path.join('node_modules', moduleName);
 
   let type;
   if(statKey && statKey.isSymbolicLink()) {
@@ -99,13 +97,14 @@ function js(strings, ...interpolatedValues) {
 }
 
 async function linkModule(moduleName) {
-  const moduleExists = await exists(`node_modules/${moduleName}`);
+  const moduleDir = path.join('node_modules', moduleName);
+  const moduleExists = await exists(moduleDir);
   const linkExists = moduleExists && await exists(`node_modules/.link-module-alias-${moduleName}`);
   const target = moduleAliases[moduleName];
 
   let type;
   if(moduleExists && !linkExists) {
-    console.error(`Module ${moduleName} already exists and wasn't created by us, skipping`);
+    console.error(chalk.red(`Module ${moduleName} already exists and wasn't created by us, skipping`));
     type = 'none';
     return { moduleName, type, target };
   } else if(linkExists) {
@@ -114,8 +113,8 @@ async function linkModule(moduleName) {
 
   if(target.match(/\.js$/)) {
     // console.log(`Target ${target} is a direct link, creating proxy require`);
-    await mkdir(`node_modules/${moduleName}`);
-    await writeFile(`node_modules/${moduleName}/package.json`, js`
+    await mkdir(moduleDir);
+    await writeFile(path.join(moduleDir, 'package.json'), js`
       {
         "name": ${moduleName},
         "main": ${path.join('../../', target)}
@@ -129,14 +128,15 @@ async function linkModule(moduleName) {
       type = 'none';
       return { moduleName, type, target };
     }
-    await symlink(path.join('../', target), `node_modules/${moduleName}`);
+    await symlink(path.join('../', target), moduleDir, 'dir');
     type = 'symlink';
   }
-  await writeFile(`node_modules/.link-module-alias-${moduleName}`, '');
+  await writeFile(path.join('node_modules', `.link-module-alias-${moduleName}`), '');
   return { moduleName, type, target };
 }
 
 async function linkModules() {
+  try { await mkdir('node_modules'); } catch(err) {}
   const modules = await Promise.all(Object.keys(moduleAliases).map(async key => {
     return linkModule(key);
   }));
@@ -144,6 +144,10 @@ async function linkModules() {
 }
 
 async function unlinkModules() {
+  const nodeModulesExists = await exists('node_modules');
+  if(!nodeModulesExists) {
+    return;
+  }
   const allModules = await readdir('node_modules');
 
   const modules = allModules.map(file => {
@@ -156,7 +160,7 @@ async function unlinkModules() {
   }));
   if(unlinkedModules.length) {
     console.log('link-module-alias: Cleaned ', unlinkedModules.filter(v => {
-      return v !== 'none';
+      return v.type !== 'none';
     }).map(addColorUnlink).join(' '));
   } else {
     console.log('link-module-alias: No modules to clean');
