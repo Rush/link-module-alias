@@ -48,6 +48,11 @@ If you encounter issues with installing modules, you may want to set up the prei
 }
 ```
 
+## How does it work?
+
+- For aliases to directories, we create symlinks with `fs.symlink`
+- For aliases to files, we create proxy modules with a package.json containing `"main"` that points to the target file
+
 ## Background
 
 This module it's almost a drop in replacement for another package https://www.npmjs.com/package/module-alias - use module `module-alias` if you like runtime require hooks and use `link-module-alias` if you want good compatibility with your IDE and no runtime hacks.
