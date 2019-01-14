@@ -1,6 +1,6 @@
 {
   "name": "link-module-alias",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Create permanent links for _moduleAliases",
   "bin": "index.js",
   "main": "index.js",

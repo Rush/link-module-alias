@@ -35,6 +35,26 @@ const chalk = require('chalk');
 
 const DIR_LINK_TYPE = ((process.platform === 'win32') ? 'junction' : 'dir');
 
+async function tryUnlink(path) {
+  try {
+    return await unlink(path);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      throw err;
+    }
+  }
+};
+
+async function tryRmdir(path) {
+  try {
+    return await rmdir(path);
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      throw err;
+    }
+  }
+};
+
 function addColor({moduleName, type, target}) {
   if(type === 'none') {
     return chalk.red(moduleName) + ` -> ${chalk.bold(chalk.red('ALREADY EXISTS'))}`;
@@ -75,13 +95,13 @@ async function unlinkModule(moduleName) {
 
   let type;
   if(statKey && statKey.isSymbolicLink()) {
-    await unlink(moduleDir);
-    await unlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
+    await tryUnlink(moduleDir);
+    await tryUnlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
     type = 'symlink';
   } else if(statKey) {
-    await unlink(path.join(moduleDir, 'package.json'));
-    await rmdir(moduleDir);
-    await unlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
+    await tryUnlink(path.join(moduleDir, 'package.json'));
+    await tryRmdir(moduleDir);
+    await tryUnlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
     type = 'proxy';
   } else {
     type = 'none';
