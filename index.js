@@ -33,6 +33,8 @@ const rmdir = promisify(fs.rmdir);
 
 const chalk = require('chalk');
 
+const DIR_LINK_TYPE = ((process.platform === 'win32') ? 'junction' : 'dir');
+
 function addColor({moduleName, type, target}) {
   if(type === 'none') {
     return chalk.red(moduleName) + ` -> ${chalk.bold(chalk.red('ALREADY EXISTS'))}`;
@@ -129,7 +131,7 @@ async function linkModule(moduleName) {
       type = 'none';
       return { moduleName, type, target };
     }
-    await symlink(path.join('../', target), moduleDir, 'dir');
+    await symlink(path.join('../', target), moduleDir, DIR_LINK_TYPE);
     type = 'symlink';
   }
   await writeFile(path.join('node_modules', `.link-module-alias-${moduleName}`), '');
