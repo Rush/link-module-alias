@@ -1,3 +1,6 @@
+### If you use `@` in your linked module names, there is a risk this module can cause data loss
+See this issue https://github.com/Rush/link-module-alias/issues/3
+
 # link-module-alias
 
 Setup private modules within your repo to get away from error-prone typing of long relative paths like these:
