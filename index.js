@@ -33,6 +33,8 @@ const rmdir = promisify(fs.rmdir);
 
 const chalk = require('chalk');
 
+const DIR_LINK_TYPE = ((process.platform === 'win32') ? 'junction' : 'dir');
+
 async function tryUnlink(path) {
   try {
     return await unlink(path);
@@ -149,7 +151,7 @@ async function linkModule(moduleName) {
       type = 'none';
       return { moduleName, type, target };
     }
-    await symlink(path.join('../', target), moduleDir, 'dir');
+    await symlink(path.join('../', target), moduleDir, DIR_LINK_TYPE);
     type = 'symlink';
   }
   await writeFile(path.join('node_modules', `.link-module-alias-${moduleName}`), '');
