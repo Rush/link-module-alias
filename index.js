@@ -33,8 +33,8 @@ const rmdir = promisify(fs.rmdir);
 
 const chalk = require('chalk');
 
-const linkAliasPrefix = '.link-module-alias-';
-const linkAliasNestedSeparator = '--';
+const LINK_ALIAS_PREFIX = '.link-module-alias-';
+const LINK_ALIAS_NESTED_SEPARATOR = '--';
 const DIR_LINK_TYPE = ((process.platform === 'win32') ? 'junction' : 'dir');
 
 async function tryUnlink(path) {
@@ -81,13 +81,13 @@ function addColorUnlink({moduleName, type}) {
 
 function getModuleAlias(moduleName) {
   // Replace any nested alias names with "--"
-  return `${linkAliasPrefix}${moduleName.replace(/\//g, linkAliasNestedSeparator)}`;
+  return `${LINK_ALIAS_PREFIX}${moduleName.replace(/\//g, LINK_ALIAS_NESTED_SEPARATOR)}`;
 }
 
 function getModuleNameFromAliasFile(aliasFileName) {
   // See if this matches the prefix and return the module name, if present
-  const m = aliasFileName.match(new RegExp(`^\\${linkAliasPrefix}(.*)`)); // RegExp = /^\.link-module-alias-(.*)/
-  return m && m[1].replace(new RegExp(linkAliasNestedSeparator, 'g'), '/'); // RegExp = /--/g
+  const m = aliasFileName.match(new RegExp(`^\\${LINK_ALIAS_PREFIX}(.*)`)); // RegExp = /^\.link-module-alias-(.*)/
+  return m && m[1].replace(new RegExp(LINK_ALIAS_NESTED_SEPARATOR, 'g'), '/'); // RegExp = /--/g
 }
 
 async function exists(filename) {
