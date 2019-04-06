@@ -33,6 +33,8 @@ const rmdir = promisify(fs.rmdir);
 
 const chalk = require('chalk');
 
+const LINK_ALIAS_PREFIX = '.link-module-alias-';
+const LINK_ALIAS_NESTED_SEPARATOR = '--';
 const DIR_LINK_TYPE = ((process.platform === 'win32') ? 'junction' : 'dir');
 
 async function tryUnlink(path) {
@@ -77,6 +79,17 @@ function addColorUnlink({moduleName, type}) {
   return moduleName;
 }
 
+function getModuleAlias(moduleName) {
+  // Replace any nested alias names with "--"
+  return `${LINK_ALIAS_PREFIX}${moduleName.replace(/\//g, LINK_ALIAS_NESTED_SEPARATOR)}`;
+}
+
+function getModuleNameFromAliasFile(aliasFileName) {
+  // See if this matches the prefix and return the module name, if present
+  const m = aliasFileName.match(new RegExp(`^\\${LINK_ALIAS_PREFIX}(.*)`)); // RegExp = /^\.link-module-alias-(.*)/
+  return m && m[1].replace(new RegExp(LINK_ALIAS_NESTED_SEPARATOR, 'g'), '/'); // RegExp = /--/g
+}
+
 async function exists(filename) {
   try {
     await stat(filename);
@@ -96,12 +109,12 @@ async function unlinkModule(moduleName) {
   let type;
   if(statKey && statKey.isSymbolicLink()) {
     await tryUnlink(moduleDir);
-    await tryUnlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
+    await tryUnlink(path.join('node_modules', getModuleAlias(moduleName)));
     type = 'symlink';
   } else if(statKey) {
     await tryUnlink(path.join(moduleDir, 'package.json'));
     await tryRmdir(moduleDir);
-    await tryUnlink(path.join('node_modules', `.link-module-alias-${moduleName}`));
+    await tryUnlink(path.join('node_modules', getModuleAlias(moduleName)));
     type = 'proxy';
   } else {
     type = 'none';
@@ -122,7 +135,7 @@ function js(strings, ...interpolatedValues) {
 async function linkModule(moduleName) {
   const moduleDir = path.join('node_modules', moduleName);
   const moduleExists = await exists(moduleDir);
-  const linkExists = moduleExists && await exists(`node_modules/.link-module-alias-${moduleName}`);
+  const linkExists = moduleExists && await exists(path.join('node_modules', getModuleAlias(moduleName)));
   const target = moduleAliases[moduleName];
 
   let type;
@@ -151,10 +164,23 @@ async function linkModule(moduleName) {
       type = 'none';
       return { moduleName, type, target };
     }
+    // Check if there is a nested alias
+    if (moduleName.includes('/')) {
+      // If every directory is already made, mkdir will throw an error
+      try {
+        // We need to create every directory except the last
+        let parentDirectories = moduleName.substr(0, moduleName.lastIndexOf('/'));
+        await mkdir(path.join('node_modules', parentDirectories), { recursive: true });
+      } catch (err) {
+        if (err.code !== 'EEXISTS') {
+          throw err;
+        }
+      }
+    }
     await symlink(path.join('../', target), moduleDir, DIR_LINK_TYPE);
     type = 'symlink';
   }
-  await writeFile(path.join('node_modules', `.link-module-alias-${moduleName}`), '');
+  await writeFile(path.join('node_modules', getModuleAlias(moduleName)), '');
   return { moduleName, type, target };
 }
 
@@ -173,10 +199,7 @@ async function unlinkModules() {
   }
   const allModules = await readdir('node_modules');
 
-  const modules = allModules.map(file => {
-    const m = file.match(/^\.link-module-alias-(.*)/);
-    return m && m[1];
-  }).filter(v => !!v);
+  const modules = allModules.map(getModuleNameFromAliasFile).filter(v => !!v);
 
   const unlinkedModules = await Promise.all(modules.map(mod => {
     return unlinkModule(mod);
