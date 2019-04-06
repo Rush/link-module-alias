@@ -34,6 +34,7 @@ const rmdir = promisify(fs.rmdir);
 const chalk = require('chalk');
 
 const linkAliasPrefix = '.link-module-alias-';
+const linkAliasNestedSeparator = '--';
 
 async function tryUnlink(path) {
   try {
@@ -79,7 +80,13 @@ function addColorUnlink({moduleName, type}) {
 
 function getModuleAlias(moduleName) {
   // Replace any nested alias names with "--"
-  return `${linkAliasPrefix}${moduleName.replace(/\//g, '--')}`;
+  return `${linkAliasPrefix}${moduleName.replace(/\//g, linkAliasNestedSeparator)}`;
+}
+
+function getModuleNameFromAliasFile(aliasFileName) {
+  // See if this matches the prefix and return the module name, if present
+  const m = aliasFileName.match(new RegExp(`^\\${linkAliasPrefix}(.*)`)); // RegExp = /^\.link-module-alias-(.*)/
+  return m && m[1].replace(new RegExp(linkAliasNestedSeparator, 'g'), '/'); // RegExp = /--/g
 }
 
 async function exists(filename) {
@@ -163,7 +170,11 @@ async function linkModule(moduleName) {
         // We need to create every directory except the last
         let parentDirectories = moduleName.substr(0, moduleName.lastIndexOf('/'));
         await mkdir(path.join('node_modules', parentDirectories), { recursive: true });
-      } catch (err) {}
+      } catch (err) {
+        if (err.code !== 'EEXISTS') {
+          throw err;
+        }
+      }
     }
     await symlink(path.join('../', target), moduleDir, 'dir');
     type = 'symlink';
@@ -187,10 +198,7 @@ async function unlinkModules() {
   }
   const allModules = await readdir('node_modules');
 
-  const modules = allModules.map(file => {
-    const m = file.match(/^\.link-module-alias-(.*)/);
-    return m && m[1].replace(/--/g, '/');
-  }).filter(v => !!v);
+  const modules = allModules.map(getModuleNameFromAliasFile).filter(v => !!v);
 
   const unlinkedModules = await Promise.all(modules.map(mod => {
     return unlinkModule(mod);

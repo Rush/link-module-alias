@@ -67,3 +67,7 @@ The key motivator to create `link-module-alias` was to fix the issue with module
 ## License
 
 MIT. Attribution to the `module-alias` for parts for the README and original idea.
+
+# Contributors
+
+[@kwburnett](https://github.com/kwburnett)
