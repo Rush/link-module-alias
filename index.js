@@ -35,6 +35,7 @@ const chalk = require('chalk');
 
 const linkAliasPrefix = '.link-module-alias-';
 const linkAliasNestedSeparator = '--';
+const DIR_LINK_TYPE = ((process.platform === 'win32') ? 'junction' : 'dir');
 
 async function tryUnlink(path) {
   try {
@@ -176,7 +177,7 @@ async function linkModule(moduleName) {
         }
       }
     }
-    await symlink(path.join('../', target), moduleDir, 'dir');
+    await symlink(path.join('../', target), moduleDir, DIR_LINK_TYPE);
     type = 'symlink';
   }
   await writeFile(path.join('node_modules', getModuleAlias(moduleName)), '');
