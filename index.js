@@ -138,6 +138,13 @@ async function linkModule(moduleName) {
   const linkExists = moduleExists && await exists(path.join('node_modules', getModuleAlias(moduleName)));
   const target = moduleAliases[moduleName];
 
+  if (moduleName.match(/^@/) && !packageJson._moduleAliasIgnoreWarning) {
+    console.warn(
+      chalk.yellow(`WARNING! Using @ in front of your module name ${moduleName} may cause data loss. Please read this issue thread https://github.com/Rush/link-module-alias/issues/3 and make a backup before executing any npm/yarn commands. The issue ultimately can be blamed on npm/yarn. You've been warned.`) +
+        ` -- you can disable this warning by setting _moduleAliasIgnoreWarning to true in your package.json`
+    );
+  }
+
   let type;
   if(moduleExists && !linkExists) {
     console.error(chalk.red(`Module ${moduleName} already exists and wasn't created by us, skipping`));

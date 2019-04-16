@@ -30,16 +30,18 @@ npm i --save-dev link-module-alias
 
 Add your custom configuration to your `package.json` (in your application's root), and setup automatic initialization in your scripts section.
 
+Note: you can use `@` in front of your module but before of the possible data loss https://github.com/Rush/link-module-alias/issues/3
+
 ```js
 "scripts": {
   "postinstall": "link-module-alias"
 },
 // Aliases
 "_moduleAliases": {
-  "@root"      : ".", // Application's root
-  "@deep"      : "src/some/very/deep/directory/or/file",
-  "@my_module" : "lib/some-file.js",
-  "something"  : "src/foo", // Or without @. Actually, it could be any string
+  "~root"      : ".", // Application's root
+  "~deep"      : "src/some/very/deep/directory/or/file",
+  "@my_module" : "lib/some-file.js", // can be @ - but see above comment and understand the associated risk
+  "something"  : "src/foo", // Or without ~. Actually, it could be any string
 }
 ```
 
