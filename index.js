@@ -177,7 +177,7 @@ async function linkModule(moduleName) {
         }
       }
     }
-    await symlink(path.join('../', target), moduleDir, DIR_LINK_TYPE);
+    await symlink(path.join('../../', target), moduleDir, DIR_LINK_TYPE);
     type = 'symlink';
   }
   await writeFile(path.join('node_modules', getModuleAlias(moduleName)), '');
