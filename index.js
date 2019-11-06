@@ -122,21 +122,14 @@ async function unlinkModule(moduleName) {
   return { moduleName, type };
 }
 
-function js(strings, ...interpolatedValues) {
-  return strings.reduce((total, current, index) => {
-    total += current;
-    if (interpolatedValues.hasOwnProperty(index)) {
-      total += JSON.stringify(interpolatedValues[index]);
-    }
-    return total;
-  }, '');
-}
-
 async function linkModule(moduleName) {
   const moduleDir = path.join('node_modules', moduleName);
   const moduleExists = await exists(moduleDir);
   const linkExists = moduleExists && await exists(path.join('node_modules', getModuleAlias(moduleName)));
-  const target = moduleAliases[moduleName];
+  const moduleAlias = moduleAliases[moduleName];
+  const isSimpleAlias = typeof moduleAlias === 'string';
+  const typings = isSimpleAlias ? undefined : moduleAlias.typings;
+  const target = isSimpleAlias ? moduleAlias : moduleAlias.main;
 
   if (moduleName.match(/^@/) && !packageJson._moduleAliasIgnoreWarning) {
     console.warn(
@@ -157,12 +150,17 @@ async function linkModule(moduleName) {
   if(target.match(/\.js$/)) {
     // console.log(`Target ${target} is a direct link, creating proxy require`);
     await mkdir(moduleDir);
-    await writeFile(path.join(moduleDir, 'package.json'), js`
-      {
-        "name": ${moduleName},
-        "main": ${path.join('../../', target)}
-      }
-    `);
+
+    const packageJsonObj = {
+      name: moduleName,
+      main: path.join('../../', target),
+    };
+
+    if (typings) {
+      packageJsonObj.typings = path.join('../../', typings);
+    }
+
+    await writeFile(path.join(moduleDir, 'package.json'), JSON.stringify(packageJsonObj, null, 2));
     type = 'proxy';
   } else {
     const stat = fs.statSync(target);
