@@ -1,19 +1,13 @@
 {
   "name": "link-module-alias",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Create permanent links for _moduleAliases",
   "bin": "index.js",
   "main": "index.js",
-  "directories": {
-    "test": "test"
-  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Rush/link-module-alias.git"
-  },
+  "repository": "github:Rush/link-module-alias",
   "author": "Damian Kaczmarek <rush@rushbase.net>",
   "contributors": [
     "Kevin Burnett <kwburnett@gmail.com>",
@@ -24,7 +18,6 @@
     "url": "https://github.com/Rush/link-module-alias/issues"
   },
   "homepage": "https://github.com/Rush/link-module-alias#readme",
-  "devDependencies": {},
   "engines": {
     "node": "> 8.0.0"
   },
