@@ -3,15 +3,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const child_process = require('child_process');
 
-let packageJson;
-try {
-  packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-} catch(err) {
-  console.error('Cannot open package.json:', err);
-  process.exit(1);
-}
+const packageJson = require('./package.json');
 
 const moduleAliases = packageJson._moduleAliases;
 if(!moduleAliases) {
@@ -23,7 +16,6 @@ const { promisify } = require('util');
 
 const stat = promisify(fs.stat);
 const lstat = promisify(fs.lstat);
-const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const readdir = promisify(fs.readdir);
