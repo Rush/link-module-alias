@@ -3,7 +3,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const child_process = require('child_process');
 
 let packageJson;
 try {
@@ -23,7 +22,6 @@ const { promisify } = require('util');
 
 const stat = promisify(fs.stat);
 const lstat = promisify(fs.lstat);
-const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const readdir = promisify(fs.readdir);
