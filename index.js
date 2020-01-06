@@ -4,13 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-let packageJson;
-try {
-  packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-} catch(err) {
-  console.error('Cannot open package.json:', err);
-  process.exit(1);
-}
+const packageJson = require('./package.json');
 
 const moduleAliases = packageJson._moduleAliases;
 if(!moduleAliases) {
