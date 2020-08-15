@@ -3,15 +3,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const child_process = require('child_process');
 
-let packageJson;
-try {
-  packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-} catch(err) {
-  console.error('Cannot open package.json:', err);
-  process.exit(1);
-}
+const packageJson = require('./package.json');
 
 const moduleAliases = packageJson._moduleAliases;
 if(!moduleAliases) {
@@ -23,7 +16,6 @@ const { promisify } = require('util');
 
 const stat = promisify(fs.stat);
 const lstat = promisify(fs.lstat);
-const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const readdir = promisify(fs.readdir);
@@ -122,21 +114,14 @@ async function unlinkModule(moduleName) {
   return { moduleName, type };
 }
 
-function js(strings, ...interpolatedValues) {
-  return strings.reduce((total, current, index) => {
-    total += current;
-    if (interpolatedValues.hasOwnProperty(index)) {
-      total += JSON.stringify(interpolatedValues[index]);
-    }
-    return total;
-  }, '');
-}
-
 async function linkModule(moduleName) {
   const moduleDir = path.join('node_modules', moduleName);
   const moduleExists = await exists(moduleDir);
   const linkExists = moduleExists && await exists(path.join('node_modules', getModuleAlias(moduleName)));
-  const target = moduleAliases[moduleName];
+  const moduleAlias = moduleAliases[moduleName];
+  const isSimpleAlias = typeof moduleAlias === 'string';
+  const typings = isSimpleAlias ? undefined : moduleAlias.typings;
+  const target = isSimpleAlias ? moduleAlias : moduleAlias.main;
 
   if (moduleName.match(/^@/) && !packageJson._moduleAliasIgnoreWarning) {
     console.warn(
@@ -157,16 +142,21 @@ async function linkModule(moduleName) {
   if(target.match(/\.js$/)) {
     // console.log(`Target ${target} is a direct link, creating proxy require`);
     await mkdir(moduleDir);
-    await writeFile(path.join(moduleDir, 'package.json'), js`
-      {
-        "name": ${moduleName},
-        "main": ${path.join('../../', target)}
-      }
-    `);
+
+    const packageJsonObj = {
+      name: moduleName,
+      main: path.join('../../', target),
+    };
+
+    if (typings) {
+      packageJsonObj.typings = path.join('../../', typings);
+    }
+
+    await writeFile(path.join(moduleDir, 'package.json'), JSON.stringify(packageJsonObj, null, 2));
     type = 'proxy';
   } else {
-    const stat = fs.statSync(target);
-    if(!stat.isDirectory) {
+    const stat = fs.lstatSync(target);
+    if(!stat.isDirectory()) {
       console.log(`Target ${target} is not a directory, skipping ...`);
       type = 'none';
       return { moduleName, type, target };
