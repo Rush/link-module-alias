@@ -162,7 +162,10 @@ async function linkModule(moduleName) {
       return { moduleName, type, target };
     }
     // Check if there is a nested alias
+    let directoryUp = '';
     if (moduleName.includes('/')) {
+      // For every subdirectory, we need to come up in our link to ensure the right directories are linked
+      directoryUp = '../'.repeat((moduleName.match(/\//g) || []).length);
       // If every directory is already made, mkdir will throw an error
       try {
         // We need to create every directory except the last
@@ -174,7 +177,7 @@ async function linkModule(moduleName) {
         }
       }
     }
-    await symlink(path.join('../../', target), moduleDir, DIR_LINK_TYPE);
+    await symlink(path.join('../', directoryUp, target), moduleDir, DIR_LINK_TYPE);
     type = 'symlink';
   }
   await writeFile(path.join('node_modules', getModuleAlias(moduleName)), '');
