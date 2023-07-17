@@ -1,14 +1,37 @@
 #!/usr/bin/env node
 // Author: Damian "Rush" Kaczmarek
 
+function getHandledAliases(moduleAliases) {
+    const aliases = Object.keys(moduleAliases);
+
+    aliases.forEach(alias => {
+        if (alias.startsWith("@")) {
+            console.warn(
+                chalk.yellow(`
+                    WARNING! Ignoring module ${alias} due to @ in front of it.
+                    Check the issue: https://github.com/Rush/link-module-alias/issues/3
+                    for more information.
+                `)
+            );
+        }
+    });
+
+    const safeAliases = aliases.filter(alias => !alias.startsWith("@"));
+    const safeModules = {};
+
+    safeAliases.forEach(alias => safeModules[alias] = aliases[alias]);
+    return safeModules;
+}
+
 const fs = require('fs');
 const path = require('path');
 
 const packageJson = require('./package.json');
 
-const moduleAliases = packageJson._moduleAliases;
+const moduleAliases = getHandledAliases(packageJson._moduleAliases);
+
 if(!moduleAliases) {
-  console.error(`_moduleAliases in package.json is empty, skipping`);
+  console.error(`No valid aliases found, skipping`);
   process.exit(0);
 }
 
