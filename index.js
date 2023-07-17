@@ -20,6 +20,7 @@ function getHandledAliases(moduleAliases) {
     const safeModules = {};
 
     safeAliases.forEach(alias => safeModules[alias] = aliases[alias]);
+    return safeModules;
 }
 
 const fs = require('fs');
